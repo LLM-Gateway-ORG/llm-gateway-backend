@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "llm-gateway-backend"
+version = "0.1.0"
+description = ""
+authors = ["Subhomoy Roy Choudhury <subhomoyrchoudhury@gmail.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+Django = "^5.1.2"
+djangorestframework = "^3.15.2"
+gunicorn = "^23.0.0"
+psycopg2-binary = "^2.9.10"
+whitenoise = "^6.7.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
