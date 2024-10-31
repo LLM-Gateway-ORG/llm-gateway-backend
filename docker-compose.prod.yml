@@ -22,7 +22,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - 8000:8000
+      - 80:8000
     volumes:
       - ./nginx/:/etc/nginx/conf.d
       - static_volume:/usr/src/main/static
