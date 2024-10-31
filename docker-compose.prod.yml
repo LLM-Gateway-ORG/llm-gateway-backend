@@ -3,6 +3,7 @@ services:
     image: subhomoy/llm-gateway-backend:latest
     container_name: llm-gateway-backend-og
     command: gunicorn main.wsgi:application --bind 0.0.0.0:8000
+    entrypoint: [ "./entrypoint.sh" ]
     volumes:
       - static_volume:/usr/src/main/static
       - media_volume:/usr/src/main/media
