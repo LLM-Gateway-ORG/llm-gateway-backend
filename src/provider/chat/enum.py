@@ -1,6 +1,6 @@
-from enum import Enum
+from base.enum import BaseEnum
 
-class ProviderEnum(Enum):
+class ProviderEnum(BaseEnum):
     GROQ = "groq"
     OPENAI = "openai"
     HUGGINGFACE = "huggingface"

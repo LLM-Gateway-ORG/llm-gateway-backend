@@ -8,8 +8,8 @@
             "envFile": "${workspaceFolder}/.env",
             "env": {
                 "DEBUG": "1",
-                "SQL_HOST": "localhost",
-                "SQL_DATABASE": "db"
+                // "SQL_HOST": "localhost",
+                // "SQL_DATABASE": "db"
             },
             "program": "${workspaceFolder}/src/manage.py",
             "args": [
@@ -26,14 +26,14 @@
             "request": "launch",
             "envFile": "${workspaceFolder}/.env",
             "env": {
-                "SQL_HOST": "localhost",
-                "REDIS_DB_HOST": "localhost",
+                // "SQL_HOST": "localhost",
             },
             "program": "${workspaceFolder}/src/manage.py",
             "args": [
                 // "makemigrations",
-                // "migrate",
-                "createsuperuser",
+                // "migrate"
+                // "createsuperuser",
+                "collectstatic", "--noinput"
             ],
             "django": true,
             "justMyCode": false

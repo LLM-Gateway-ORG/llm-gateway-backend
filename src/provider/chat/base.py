@@ -11,7 +11,7 @@ class BaseLLM(ABC):
         return self._api_key
 
     @api_key.setter
-    def api_key(self, api_key: str):
+    def api_key(self, api_key: str) -> None:
         if not api_key:
             raise ValueError("Groq API Key Not Found")
         self._api_key = api_key

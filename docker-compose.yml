@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: llm-gatway-backend
     command: gunicorn main.wsgi:application --bind 0.0.0.0:8000
     ports:
       - 8002:8000
