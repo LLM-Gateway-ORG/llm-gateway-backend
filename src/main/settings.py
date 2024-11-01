@@ -46,6 +46,7 @@ SYSTEM_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "corsheaders",
 ]
 
 INSTALLED_APPS = THIRD_PARTY_APPS + LOCAL_APPS + SYSTEM_APPS
@@ -60,6 +61,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "main.urls"
@@ -170,6 +172,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")
 
 # Google OAuth2 settings
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 GOOGLE_OAUTH2_REDIRECT_URI = f"{os.environ.get('GOOGLE_OAUTH2_REDIRECT_URI')}"
+
+# CORS Allowed Origins
+CORS_ALLOWED_ORIGINS = [
+    "http://ec2-13-201-85-148.ap-south-1.compute.amazonaws.com",
+]
