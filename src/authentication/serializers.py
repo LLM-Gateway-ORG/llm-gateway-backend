@@ -11,11 +11,39 @@ class AuthUserSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
         # Additional validation for username
-        if not value.isalnum() and not all(x in "_ " for x in value):
+        MIN_LENGTH = 3
+        MAX_LENGTH = 150
+        ALLOWED_CHARS = r"^[a-zA-Z0-9@.+-_]+$"
+
+        # Check length
+        if len(value) < MIN_LENGTH:
             raise serializers.ValidationError(
-                "Username must contain only letters, numbers, or underscores."
+                f"Username must be at least {MIN_LENGTH} characters long."
             )
-        return value
+        if len(value) > MAX_LENGTH:
+            raise serializers.ValidationError(
+                f"Username cannot exceed {MAX_LENGTH} characters."
+            )
+
+        # Check allowed characters
+        if not re.match(ALLOWED_CHARS, value):
+            raise serializers.ValidationError(
+                "Username can only contain letters, numbers, and the following characters: @ . + - _"
+            )
+
+        # Check if username starts/ends with allowed special chars
+        if re.match(r"^[.+-_@]|[.+-_@]$", value):
+            raise serializers.ValidationError(
+                "Username cannot start or end with special characters."
+            )
+
+        # Check for consecutive special characters
+        if re.search(r"[.+-_@]{2,}", value):
+            raise serializers.ValidationError(
+                "Username cannot contain consecutive special characters."
+            )
+
+        return value.lower()  # Store usernames in lowercase for consistency
 
     def validate_firstname(self, value):
         # Validate that firstname contains only letters
@@ -25,8 +53,8 @@ class AuthUserSerializer(serializers.ModelSerializer):
 
     def validate_lastname(self, value):
         # Validate that lastname contains only letters
-        if not value.isalpha():
-            raise serializers.ValidationError("Lastname must contain only letters.")
+        if not all(char.isalpha() or char.isspace() for char in value):
+            raise serializers.ValidationError("Lastname must contain only letters and spaces.")
         return value
 
     def validate_email(self, value):

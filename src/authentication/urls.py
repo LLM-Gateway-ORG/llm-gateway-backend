@@ -4,9 +4,11 @@ from .views import (
     UserLoginView,
     UserProfileView,
     AuthTokenRefreshView,
-    UserAPIView,
     APIKeyCreateView,
     APIKeyRetrieveDeleteView,
+    GoogleLoginURLView,
+    GoogleCallbackView,
+    GoogleTokenRefreshView,
 )
 
 urlpatterns = [
@@ -14,7 +16,11 @@ urlpatterns = [
     path("login/", UserLoginView.as_view(), name="login"),
     path("profile/", UserProfileView.as_view(), name="user-profile"),
     path("token/refresh/", AuthTokenRefreshView.as_view(), name="token_refresh"),
-    path("users/", UserAPIView.as_view(), name="search-users"),
+
+    path("google/login/", GoogleLoginURLView.as_view(), name="google-login-url"),
+    path("google/login/callback/", GoogleCallbackView.as_view(), name="google-callback"),
+    path("google/login/refresh/", GoogleTokenRefreshView.as_view(), name="google-refresh"),
+
     path("apikey/", APIKeyCreateView.as_view(), name="apikey_create"),
     path(
         "apikey/<uuid:key_id>/",

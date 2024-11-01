@@ -5,7 +5,7 @@
             "name": "Python: Django",
             "type": "debugpy",
             "request": "launch",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/local.env",
             "env": {
                 "DEBUG": "1",
                 // "SQL_HOST": "localhost",
@@ -24,16 +24,15 @@
             "name": "Python: Execute Commands",
             "type": "debugpy",
             "request": "launch",
-            "envFile": "${workspaceFolder}/.env",
+            "envFile": "${workspaceFolder}/local.env",
             "env": {
                 // "SQL_HOST": "localhost",
             },
             "program": "${workspaceFolder}/src/manage.py",
             "args": [
                 // "makemigrations",
-                // "migrate"
+                "migrate",
                 // "createsuperuser",
-                "collectstatic", "--noinput"
             ],
             "django": true,
             "justMyCode": false

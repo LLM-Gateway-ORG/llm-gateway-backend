@@ -8,6 +8,7 @@ from django.core.validators import RegexValidator
 from base.models import BaseModel
 import uuid
 
+
 class CustomUserManager(BaseUserManager):
     def create_user(
         self, username, email, firstname, lastname, password=None, **extra_fields
@@ -20,7 +21,7 @@ class CustomUserManager(BaseUserManager):
             email=email,
             firstname=firstname,
             lastname=lastname,
-            **extra_fields
+            **extra_fields,
         )
         user.set_password(password)
         user.save(using=self._db)
@@ -38,15 +39,16 @@ class CustomUserManager(BaseUserManager):
 
 
 class AuthUser(AbstractBaseUser, PermissionsMixin):
+    auth_provider = models.CharField(max_length=20, default="email")
     username = models.CharField(
         max_length=150,
         unique=True,
-        validators=[
-            RegexValidator(
-                regex=r"^\w+$",
-                message="Username must contain only letters, numbers, or underscores",
-            )
-        ],
+        # validators=[
+        #     RegexValidator(
+        #         regex=r"^\w+$",
+        #         message="Username must contain only letters, numbers, or underscores",
+        #     )
+        # ],
     )
     email = models.EmailField(unique=True, db_index=True)
     firstname = models.CharField(
@@ -61,7 +63,8 @@ class AuthUser(AbstractBaseUser, PermissionsMixin):
         max_length=150,
         validators=[
             RegexValidator(
-                regex=r"^[a-zA-Z]+$", message="Lastname must contain only letters"
+                regex=r"^[a-zA-Z\s]+$",
+                message="Lastname must contain only letters and spaces",
             )
         ],
     )
@@ -83,13 +86,14 @@ class AuthUser(AbstractBaseUser, PermissionsMixin):
                 check=models.Q(firstname__iregex=r"^[a-zA-Z]+$"), name="firstname_valid"
             ),
             models.CheckConstraint(
-                check=models.Q(lastname__iregex=r"^[a-zA-Z]+$"), name="lastname_valid"
+                check=models.Q(lastname__iregex=r"^[a-zA-Z\s]+$"), name="lastname_valid"
             ),
         ]
 
     def __str__(self):
         return self.username
-    
+
+
 class APIKey(BaseModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     key = models.CharField(max_length=128, unique=True)

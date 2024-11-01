@@ -168,3 +168,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # API Key Encryption
 ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")
+
+# Google OAuth2 settings
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+GOOGLE_OAUTH2_REDIRECT_URI = f"{os.environ.get('GOOGLE_OAUTH2_REDIRECT_URI')}"
