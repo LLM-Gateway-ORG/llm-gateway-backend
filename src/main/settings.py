@@ -177,6 +177,6 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 GOOGLE_OAUTH2_REDIRECT_URI = f"{os.environ.get('GOOGLE_OAUTH2_REDIRECT_URI')}"
 
 # CORS Allowed Origins
-CORS_ALLOWED_ORIGINS = [
-    "http://ec2-13-201-85-148.ap-south-1.compute.amazonaws.com",
-]
+cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins if origin]
