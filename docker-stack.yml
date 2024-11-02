@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  backend:
+    image: subhomoy/llm-gateway-backend:latest
+    command: gunicorn main.wsgi:application --bind 0.0.0.0:8000
+    entrypoint: [ "./entrypoint.sh" ]
+    volumes:
+      - static_volume:/usr/src/main/static
+      - media_volume:/usr/src/main/media
+    env_file:
+      - prod.env
+    environment:
+      - DEBUG=0
+      - MODE=server
+      - PORT=8000
+      - DATABASE=postgres
+      - SECRET_KEY=v6nvsn^*dh5d839)^dp1y2s+3q06o&u^4hm@3msf)50s+^t@1p
+    networks:
+      - nginx_network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - published: 80
+        target: 8000
+        mode: host
+    volumes:
+      - ./nginx/:/etc/nginx/conf.d
+      - static_volume:/usr/src/main/static
+      - media_volume:/usr/src/main/media
+    depends_on:
+      - backend
+    networks:
+      - nginx_network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+networks:
+  nginx_network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
