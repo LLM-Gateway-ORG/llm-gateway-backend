@@ -17,13 +17,18 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static
+
+def healthz_view(request):
+    return JsonResponse({"status": "OK"})
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('auth/', include('authentication.urls')),
     path('provider/', include('provider.urls')),
+    path('healthz/', healthz_view),
 ]
 
 if bool(settings.DEBUG):
