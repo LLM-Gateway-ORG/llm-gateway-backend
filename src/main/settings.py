@@ -128,6 +128,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 8,
+        },
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -181,4 +184,4 @@ cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins if origin]
 
-FORCE_SCRIPT_NAME = '/api'
+FORCE_SCRIPT_NAME = "/api"
