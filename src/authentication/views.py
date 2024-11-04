@@ -15,7 +15,7 @@ from google.oauth2 import id_token
 from urllib.parse import urlencode
 
 from .models import AuthUser, APIKey
-from .serializers import AuthUserSerializer, APIKeySerializer
+from .serializers import AuthUserSerializer, APIKeySerializer, ResetPasswordSerializer
 
 
 # Create your views here.
@@ -135,7 +135,7 @@ class GoogleAuthBaseView(views.APIView):
                     "firstname": user_data.get("given_name", ""),
                     "lastname": user_data.get("family_name", ""),
                     "auth_provider": "google",
-                    "password": secrets.token_urlsafe(32)
+                    "password": secrets.token_urlsafe(32),
                 }
                 serializer = AuthUserSerializer(data=user_details)
                 serializer.is_valid(raise_exception=True)
@@ -268,3 +268,44 @@ class GoogleTokenRefreshView(GoogleAuthBaseView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(views.APIView):
+    def post(self, request):
+        user = request.user
+        serializer = ResetPasswordSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        old_password = serializer.validated_data["old_password"]
+        new_password = serializer.validated_data["new_password"]
+
+        # Check if new password is same as old password
+        if old_password == new_password:
+            return Response(
+                {"error": "New password must be different from old password"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify old password
+        if not user.check_password(old_password):
+            return Response(
+                {"error": "Invalid old password"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+
+        # Generate new tokens since password changed
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "message": "Password changed successfully",
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            },
+            status=status.HTTP_200_OK,
+        )

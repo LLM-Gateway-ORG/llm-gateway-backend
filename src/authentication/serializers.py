@@ -1,6 +1,8 @@
 import re
 from rest_framework import serializers
 from .models import AuthUser, APIKey
+from django.core import exceptions
+import django.contrib.auth.password_validation as validators
 
 
 class AuthUserSerializer(serializers.ModelSerializer):
@@ -54,7 +56,9 @@ class AuthUserSerializer(serializers.ModelSerializer):
     def validate_lastname(self, value):
         # Validate that lastname contains only letters
         if not all(char.isalpha() or char.isspace() for char in value):
-            raise serializers.ValidationError("Lastname must contain only letters and spaces.")
+            raise serializers.ValidationError(
+                "Lastname must contain only letters and spaces."
+            )
         return value
 
     def validate_email(self, value):
@@ -96,3 +100,16 @@ class APIKeySerializer(serializers.ModelSerializer):
     class Meta:
         model = APIKey
         fields = ["key", "user"]
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_new_password(self, value):
+        try:
+            # This will use the validators configured in your settings.py
+            validators.validate_password(value)
+        except exceptions.ValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
