@@ -1,7 +1,29 @@
 from django.urls import path
-from .views import GenerateCompletionView, APIKeyAuthenticatedGenerateCompletionView
+from .views import (
+    GenerateCompletionView,
+    APIKeyAuthenticatedGenerateCompletionView,
+    ProviderAPIKeyListCreateView,
+    ProviderAPIKeyDetailView,
+    AIModelListView,
+)
+
+app_name = "provider"
 
 urlpatterns = [
-    path('playground/prompt/', GenerateCompletionView.as_view(), name='generate_completion'),
-    path('chat/completion/', APIKeyAuthenticatedGenerateCompletionView.as_view(), name='api_key_generate_completion'),
+    # AI Completion endpoints
+    path(
+        "generate/completion/",
+        GenerateCompletionView.as_view(),
+        name="generate-completion",
+    ),
+    path(
+        "generate/completion/",
+        APIKeyAuthenticatedGenerateCompletionView.as_view(),
+        name="api-generate-completion",
+    ),
+    # Provider API Key CRUD endpoints
+    path("", ProviderAPIKeyListCreateView.as_view(), name="provider-list"),
+    path("<int:pk>/", ProviderAPIKeyDetailView.as_view(), name="provider-detail"),
+    # AI Models listing endpoint
+    path("ai/models/", AIModelListView.as_view(), name="ai-model-list"),
 ]

@@ -3,11 +3,22 @@ import json
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.http import StreamingHttpResponse, JsonResponse
+from django.core.cache import cache
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.db import transaction
+from rest_framework import status
+from rest_framework.response import Response
 
 from authentication.permissions import APIKeyPermission
 from provider.models import ProviderAPIKey
 from provider.utils import chat_completion
 from provider.constants import AI_MODELS
+from provider.serializers import (
+    ProviderAPIKeySerializer,
+    ProviderAPIKeyCreateSerializer,
+    ProviderAPIKeyUpdateSerializer,
+)
 
 # Create your views here.
 
@@ -68,3 +79,182 @@ class GenerateCompletionView(BaseGenerateCompletionView):
 
 class APIKeyAuthenticatedGenerateCompletionView(BaseGenerateCompletionView):
     permission_classes = [APIKeyPermission]
+
+
+class ProviderAPIKeyListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(cache_page(60))  # Cache for 1 minute
+    def get(self, request):
+        """List all provider API keys for the authenticated user"""
+        cache_key = f"provider_keys_{request.user.id}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
+        providers = ProviderAPIKey.objects.filter(user=request.user).select_related(
+            "user"
+        )
+        serializer = ProviderAPIKeySerializer(providers, many=True)
+        cache.set(cache_key, serializer.data, timeout=60)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def post(self, request):
+        """Create a new provider API key"""
+        serializer = ProviderAPIKeyCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # Check if user already has a key for this provider
+            if ProviderAPIKey.objects.filter(
+                user=request.user, provider=serializer.validated_data["provider"]
+            ).exists():
+                return Response(
+                    {"error": "You already have an API key for this provider"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            serializer.save(user=request.user)
+            # Invalidate cache
+            cache.delete(f"provider_keys_{request.user.id}")
+            return Response(
+                ProviderAPIKeySerializer(serializer.instance).data,
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProviderAPIKeyDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk, user):
+        try:
+            return ProviderAPIKey.objects.select_related("user").get(pk=pk, user=user)
+        except ProviderAPIKey.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        """Retrieve a specific provider API key"""
+        cache_key = f"provider_key_{pk}_{request.user.id}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
+        provider = self.get_object(pk, request.user)
+        if not provider:
+            return Response(
+                {"error": "Provider API Key not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ProviderAPIKeySerializer(provider)
+        cache.set(cache_key, serializer.data, timeout=60)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def put(self, request, pk):
+        """Update a provider API key"""
+        provider = self.get_object(pk, request.user)
+        if not provider:
+            return Response(
+                {"error": "Provider API Key not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ProviderAPIKeyUpdateSerializer(
+            provider, data=request.data, partial=False
+        )
+        if serializer.is_valid():
+            serializer.save()
+            # Invalidate caches
+            cache.delete_many(
+                [
+                    f"provider_keys_{request.user.id}",
+                    f"provider_key_{pk}_{request.user.id}",
+                ]
+            )
+            return Response(ProviderAPIKeySerializer(provider).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @transaction.atomic
+    def delete(self, request, pk):
+        """Delete a provider API key"""
+        provider = self.get_object(pk, request.user)
+        if not provider:
+            return Response(
+                {"error": "Provider API Key not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        provider.delete()
+        # Invalidate caches
+        cache.delete_many(
+            [f"provider_keys_{request.user.id}", f"provider_key_{pk}_{request.user.id}"]
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AIModelListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(
+        cache_page(3600)
+    )  # Cache for 1 hour since model list rarely changes
+    def get(self, request):
+        """
+        List all available AI models with optional filtering by name and provider.
+
+        Query Parameters:
+        - name: Filter models by name (case-insensitive partial match)
+        - provider: Filter models by provider (case-insensitive exact match)
+        """
+        # Get query parameters
+        name_filter = request.query_params.get("name", "").lower()
+        provider_filter = request.query_params.get("provider", "").lower()
+
+        # Generate cache key based on filters
+        cache_key = f"ai_models_list_{name_filter}_{provider_filter}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
+        # Filter models based on query parameters
+        filtered_models = AI_MODELS
+
+        if name_filter:
+            filtered_models = [
+                model
+                for model in filtered_models
+                if name_filter in model["model_name"].lower()
+            ]
+
+        if provider_filter:
+            filtered_models = [
+                model
+                for model in filtered_models
+                if provider_filter == model["provider"].value.lower()
+            ]
+
+        # Transform the data to include additional useful information
+        filtered_models = [
+            {
+                **model,
+                "provider": model["provider"].value,
+            }  # Convert enum to string value
+            for model in filtered_models
+        ]
+
+        response_data = {
+            "count": len(filtered_models),
+            "models": filtered_models,
+            "available_providers": sorted(
+                list({model["provider"].value for model in AI_MODELS})
+            ),
+        }
+
+        # Cache the filtered results
+        cache.set(cache_key, response_data, timeout=3600)
+
+        return Response(response_data)
