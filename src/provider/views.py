@@ -16,7 +16,7 @@ from provider.utils import chat_completion
 from provider.constants import AI_MODELS
 from provider.serializers import (
     ProviderAPIKeySerializer,
-    ProviderAPIKeyCreateSerializer,
+    ProviderAPIKeyDetailsSerializer,
     ProviderAPIKeyUpdateSerializer,
 )
 
@@ -103,7 +103,7 @@ class ProviderAPIKeyListCreateView(APIView):
     @transaction.atomic
     def post(self, request):
         """Create a new provider API key"""
-        serializer = ProviderAPIKeyCreateSerializer(data=request.data)
+        serializer = ProviderAPIKeyDetailsSerializer(data=request.data)
         if serializer.is_valid():
             # Check if user already has a key for this provider
             if ProviderAPIKey.objects.filter(
@@ -148,7 +148,7 @@ class ProviderAPIKeyDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ProviderAPIKeySerializer(provider)
+        serializer = ProviderAPIKeyDetailsSerializer(provider)
         cache.set(cache_key, serializer.data, timeout=60)
         return Response(serializer.data)
 

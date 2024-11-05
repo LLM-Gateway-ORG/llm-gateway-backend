@@ -9,7 +9,7 @@ class ProviderAPIKeySerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
-class ProviderAPIKeyCreateSerializer(serializers.ModelSerializer):
+class ProviderAPIKeyDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProviderAPIKey
         fields = ["id", "provider", "api_key", "created_at"]
