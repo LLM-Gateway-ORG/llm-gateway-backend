@@ -113,7 +113,6 @@ class ProviderAPIKeyListCreateView(APIView):
                     {"error": "You already have an API key for this provider"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-
             serializer.save(user=request.user)
             # Invalidate cache
             cache.delete(f"provider_keys_{request.user.id}")
@@ -137,28 +136,23 @@ class ProviderAPIKeyDetailView(APIView):
         """Retrieve a specific provider API key with decrypted api key"""
         cache_key = f"provider_key_{pk}_{request.user.id}"
         cached_data = cache.get(cache_key)
-
         if cached_data:
             return Response(cached_data)
-
         provider = self.get_object(pk, request.user)
         if not provider:
             return Response(
                 {"error": "Provider API Key not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         serializer = ProviderAPIKeySerializer(provider)
-        
-        # Use the model's method to get the decrypted API key
-        decrypted_api_key = provider.get_decrypted_api_key()
-        
-        # Add the decrypted API key to the response data
-        response_data = serializer.data
-        response_data['api_key'] = decrypted_api_key
-        
-        cache.set(cache_key, response_data, timeout=60)
-        return Response(response_data)
+        cache.set(
+            cache_key,
+            {**serializer.data, "api_key": provider.get_decrypted_api_key()},
+            timeout=60,
+        )
+        return Response(
+            {**serializer.data, "api_key": provider.get_decrypted_api_key()}
+        )
 
     @transaction.atomic
     def put(self, request, pk):
