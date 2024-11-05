@@ -23,7 +23,7 @@ class ProviderAPIKey(BaseModel):
             self.slug = slugify(f"{self.user.username}-{self.provider}")
 
         # Encrypt the API key before saving
-        if self.api_key and not self._state.adding:  # Encrypt only on creation
+        if self.api_key:
             self.api_key = encrypt_value(self.api_key)
 
         super(ProviderAPIKey, self).save(*args, **kwargs)
