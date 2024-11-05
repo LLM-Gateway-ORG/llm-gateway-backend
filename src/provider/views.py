@@ -16,8 +16,9 @@ from provider.utils import chat_completion
 from provider.constants import AI_MODELS
 from provider.serializers import (
     ProviderAPIKeySerializer,
-    ProviderAPIKeyDetailsSerializer,
+    ProviderAPIKeyCreateSerializer,
     ProviderAPIKeyUpdateSerializer,
+    ProviderAPIKeyDetailsSerializer,
 )
 
 # Create your views here.
@@ -103,7 +104,7 @@ class ProviderAPIKeyListCreateView(APIView):
     @transaction.atomic
     def post(self, request):
         """Create a new provider API key"""
-        serializer = ProviderAPIKeyDetailsSerializer(data=request.data)
+        serializer = ProviderAPIKeyCreateSerializer(data=request.data)
         if serializer.is_valid():
             # Check if user already has a key for this provider
             if ProviderAPIKey.objects.filter(
@@ -134,7 +135,7 @@ class ProviderAPIKeyDetailView(APIView):
             return None
 
     def get(self, request, pk):
-        """Retrieve a specific provider API key"""
+        """Retrieve a specific provider API key with decrypted api key"""
         cache_key = f"provider_key_{pk}_{request.user.id}"
         cached_data = cache.get(cache_key)
 
@@ -148,9 +149,17 @@ class ProviderAPIKeyDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ProviderAPIKeyDetailsSerializer(provider)
-        cache.set(cache_key, serializer.data, timeout=60)
-        return Response(serializer.data)
+        serializer = ProviderAPIKeySerializer(provider)
+        
+        # Use the model's method to get the decrypted API key
+        decrypted_api_key = provider.get_decrypted_api_key()
+        
+        # Add the decrypted API key to the response data
+        response_data = serializer.data
+        response_data['api_key'] = decrypted_api_key
+        
+        cache.set(cache_key, response_data, timeout=60)
+        return Response(response_data)
 
     @transaction.atomic
     def put(self, request, pk):

@@ -10,16 +10,11 @@ class ProviderAPIKeySerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
-class ProviderAPIKeyDetailsSerializer(serializers.ModelSerializer):
-    api_key = serializers.SerializerMethodField()
-
+class ProviderAPIKeyCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProviderAPIKey
         fields = ["id", "provider", "api_key", "created_at"]
         read_only_fields = ["id", "created_at"]
-
-    def get_api_key(self, obj):
-        return decrypt_value(obj.api_key)
 
 
 class ProviderAPIKeyUpdateSerializer(serializers.ModelSerializer):
