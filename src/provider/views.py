@@ -18,7 +18,6 @@ from provider.serializers import (
     ProviderAPIKeySerializer,
     ProviderAPIKeyCreateSerializer,
     ProviderAPIKeyUpdateSerializer,
-    ProviderAPIKeyDetailsSerializer,
 )
 
 # Create your views here.

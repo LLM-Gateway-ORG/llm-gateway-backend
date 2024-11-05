@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import ProviderAPIKey
-from provider.helpers import decrypt_value
 
 
 class ProviderAPIKeySerializer(serializers.ModelSerializer):
