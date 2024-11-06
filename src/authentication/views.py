@@ -107,24 +107,15 @@ class APIKeyRetrieveDeleteView(views.APIView):
             )
 
 
-class APIKeyView(views.APIView):
+class APIKeyView(generics.ListCreateAPIView):
+    serializer_class = APIKeySerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = LimitOffsetPagination
 
-    def get(self, request):
-        # Get all API keys for the authenticated user
-        api_keys = APIKey.objects.filter(user=request.user)
+    def get_queryset(self):
+        return APIKey.objects.filter(user=self.request.user).order_by('id')
 
-        # Initialize paginator
-        paginator = self.pagination_class()
-        paginated_keys = paginator.paginate_queryset(api_keys, request)
-
-        # Serialize the paginated data
-        serializer = APIKeySerializer(paginated_keys, many=True)
-
-        return paginator.get_paginated_response(serializer.data)
-
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         # Generate a new API key for the authenticated user
         api_key_value = secrets.token_urlsafe(32)
         api_key = APIKey.objects.create(key=api_key_value, user=request.user)
