@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
+import uuid
 
 from base.models import BaseModel
 from provider.chat.enum import ProviderEnum
@@ -9,8 +10,9 @@ from provider.helpers import encrypt_value, decrypt_value
 # Create your models here.
 
 class ProviderAPIKey(BaseModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(AuthUser, related_name="auth_user", on_delete=models.CASCADE)
-    provider = models.CharField(choices=ProviderEnum.choices(), max_length=100)
+    provider = models.CharField(max_length=100, default=ProviderEnum.GROQ.name)
     api_key = models.CharField(max_length=255) 
     slug = models.SlugField(unique=True, blank=True, null=True)
 

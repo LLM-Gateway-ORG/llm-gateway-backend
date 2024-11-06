@@ -23,7 +23,7 @@ urlpatterns = [
     ),
     # Provider API Key CRUD endpoints
     path("", ProviderAPIKeyListCreateView.as_view(), name="provider-list"),
-    path("<int:pk>/", ProviderAPIKeyDetailView.as_view(), name="provider-detail"),
+    path("<uuid:pk>/", ProviderAPIKeyDetailView.as_view(), name="provider-detail"),
     # AI Models listing endpoint
     path("ai/models/", AIModelListView.as_view(), name="ai-model-list"),
 ]
