@@ -7,6 +7,9 @@ from django.db import models
 from django.core.validators import RegexValidator
 from base.models import BaseModel
 import uuid
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+import secrets
 
 
 class CustomUserManager(BaseUserManager):
@@ -96,8 +99,17 @@ class AuthUser(AbstractBaseUser, PermissionsMixin):
 
 class APIKey(BaseModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=128, default="Default")
     key = models.CharField(max_length=128, unique=True)
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.id}"
+
+
+@receiver(post_save, sender=AuthUser)
+def create_api_key(sender, instance, created, **kwargs):
+    if created:
+        # Generate a secure random API key
+        api_key = secrets.token_urlsafe(32)
+        APIKey.objects.create(name="Default", user=instance, key=api_key)

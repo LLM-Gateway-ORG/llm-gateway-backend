@@ -75,17 +75,6 @@ class AuthTokenRefreshView(TokenRefreshView):
         return response
 
 
-class APIKeyCreateView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        # Generate a new API key for the authenticated user
-        api_key_value = secrets.token_urlsafe(32)
-        api_key = APIKey.objects.create(key=api_key_value, user=request.user)
-        serializer = APIKeySerializer(api_key)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
 class APIKeyRetrieveDeleteView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -94,7 +83,10 @@ class APIKeyRetrieveDeleteView(views.APIView):
         try:
             api_key = APIKey.objects.get(id=key_id, user=request.user)
             serializer = APIKeySerializer(api_key)
-            return Response(serializer.data)
+            data = serializer.data
+            # Add the actual API key value to the response
+            data["key"] = api_key.key
+            return Response(data)
         except APIKey.DoesNotExist:
             return Response(
                 {"error": "API key not found"}, status=status.HTTP_404_NOT_FOUND
@@ -113,6 +105,33 @@ class APIKeyRetrieveDeleteView(views.APIView):
             return Response(
                 {"error": "API key not found"}, status=status.HTTP_404_NOT_FOUND
             )
+
+
+class APIKeyView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = LimitOffsetPagination
+
+    def get(self, request):
+        # Get all API keys for the authenticated user
+        api_keys = APIKey.objects.filter(user=request.user)
+
+        # Initialize paginator
+        paginator = self.pagination_class()
+        paginated_keys = paginator.paginate_queryset(api_keys, request)
+
+        # Serialize the paginated data
+        serializer = APIKeySerializer(paginated_keys, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        # Generate a new API key for the authenticated user
+        api_key_value = secrets.token_urlsafe(32)
+        api_key = APIKey.objects.create(key=api_key_value, user=request.user)
+        serializer = APIKeySerializer(api_key)
+        return Response(
+            {**serializer.data, "key": api_key.key}, status=status.HTTP_201_CREATED
+        )
 
 
 class GoogleAuthBaseView(views.APIView):
