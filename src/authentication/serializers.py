@@ -99,7 +99,7 @@ class AuthUserSerializer(serializers.ModelSerializer):
 class APIKeySerializer(serializers.ModelSerializer):
     class Meta:
         model = APIKey
-        fields = ["name", "user"]
+        fields = ["id", "name", "user", "created_at"]
 
 
 class ResetPasswordSerializer(serializers.Serializer):

@@ -113,12 +113,24 @@ class APIKeyView(generics.ListCreateAPIView):
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
-        return APIKey.objects.filter(user=self.request.user).order_by('id')
+        return APIKey.objects.filter(user=self.request.user).order_by("id")
 
     def post(self, request, *args, **kwargs):
+        # Get the name from request data
+        name = request.data.get("name")
+
+        # Check if name already exists for this user
+        if APIKey.objects.filter(user=request.user, name=name).exists():
+            return Response(
+                {"error": f"API key with name '{name}' already exists"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Generate a new API key for the authenticated user
         api_key_value = secrets.token_urlsafe(32)
-        api_key = APIKey.objects.create(key=api_key_value, user=request.user)
+        api_key = APIKey.objects.create(
+            name=name, key=api_key_value, user=request.user
+        )
         serializer = APIKeySerializer(api_key)
         return Response(
             {**serializer.data, "key": api_key.key}, status=status.HTTP_201_CREATED
