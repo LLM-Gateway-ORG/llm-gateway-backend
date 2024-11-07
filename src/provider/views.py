@@ -19,7 +19,7 @@ from provider.serializers import (
     ProviderAPIKeyCreateSerializer,
     ProviderAPIKeyUpdateSerializer,
 )
-
+from provider.helpers import decrypt_value
 # Create your views here.
 
 
@@ -57,7 +57,7 @@ class BaseGenerateCompletionView(APIView):
 
         # Initialize and load model
         llm = chat_completion(
-            api_key=provider_obj.api_key,
+            api_key=decrypt_value(provider_obj.api_key),
             model_name=model_name,
             provider=provider_obj.provider,
         )

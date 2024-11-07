@@ -12,7 +12,7 @@ app_name = "provider"
 urlpatterns = [
     # AI Completion endpoints
     path(
-        "generate/completion/",
+        "playground/generate/completion/",
         GenerateCompletionView.as_view(),
         name="generate-completion",
     ),
