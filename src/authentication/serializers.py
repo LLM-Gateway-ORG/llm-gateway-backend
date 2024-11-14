@@ -40,10 +40,10 @@ class AuthUserSerializer(serializers.ModelSerializer):
             )
 
         # Check for consecutive special characters
-        if re.search(r"[.+-_@]{2,}", value):
-            raise serializers.ValidationError(
-                "Username cannot contain consecutive special characters."
-            )
+        # if re.search(r"[.+-_@]{2,}", value):
+        #     raise serializers.ValidationError(
+        #         "Username cannot contain consecutive special characters."
+        #     )
 
         return value.lower()  # Store usernames in lowercase for consistency
 
