@@ -16,9 +16,9 @@ whitenoise = "^6.7.0"
 djangorestframework-simplejwt = "^5.3.1"
 cryptography = "^43.0.3"
 langchain-core = "^0.3.13"
-langchain-groq = "^0.2.0"
 google-auth = "^2.35.0"
 django-cors-headers = "^4.6.0"
+litellm = "^1.52.6"
 
 
 [build-system]

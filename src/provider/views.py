@@ -9,17 +9,18 @@ from django.views.decorators.cache import cache_page
 from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
+from litellm import model_cost
 
 from authentication.permissions import APIKeyPermission
 from provider.models import ProviderAPIKey
 from provider.utils import chat_completion
-from provider.constants import AI_MODELS
 from provider.serializers import (
     ProviderAPIKeySerializer,
     ProviderAPIKeyCreateSerializer,
     ProviderAPIKeyUpdateSerializer,
 )
 from provider.helpers import decrypt_value
+
 # Create your views here.
 
 
@@ -28,63 +29,99 @@ class BaseGenerateCompletionView(APIView):
         """Override this method in subclasses to set specific permissions."""
         raise NotImplementedError("Subclasses must define permission classes")
 
-    def post(self, request) -> StreamingHttpResponse:
-        # Parse request body
+    def generate_stream_response(self, messages, model_name, provider_obj):
+        """Generate streaming response for async endpoints"""
+
+        async def stream_chat():
+            try:
+                llm = chat_completion(
+                    api_key=decrypt_value(provider_obj.api_key),
+                    provider=provider_obj.provider,
+                )
+                async for response in llm.async_completion(model_name, messages):
+                    yield f"data: {response}\n\n"
+            except Exception as e:
+                yield f"data: Error in chat completion: {str(e)}\n\n"
+
+        return StreamingHttpResponse(
+            streaming_content=stream_chat(),
+            content_type="text/event-stream"
+        )
+
+    def generate_sync_response(self, messages, model_name, provider_obj):
+        """Generate complete response for non-streaming endpoints"""
+        try:
+            llm = chat_completion(
+                api_key=decrypt_value(provider_obj.api_key),
+                provider=provider_obj.provider,
+            )
+
+            full_response = llm.completion(model_name, messages)
+            return JsonResponse({"response": full_response})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    def validate_request(self, request):
+        """Common validation logic"""
         try:
             body = request.data
             messages = body.get("messages", [])
             model_name = body.get("model_name")
             provider_id = body.get("provider_id")
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON body"}, status=400)
 
-        # Fetch Provider Details
-        provider_list = ProviderAPIKey.objects.filter(id=provider_id, user=request.user)
-        if not provider_list.exists():
-            return JsonResponse(
-                {"error": "Provider Not Found or Access Denied"}, status=400
+            provider_list = ProviderAPIKey.objects.filter(
+                id=provider_id, user=request.user
             )
+            if not provider_list.exists():
+                return None, JsonResponse(
+                    {"error": "Provider Not Found or Access Denied"}, status=400
+                )
 
-        provider_obj = provider_list.first()
+            provider_obj = provider_list.first()
 
-        # Check Model List
-        if not any(
-            i["model_name"] == model_name
-            and i["provider"].value == provider_obj.provider
-            for i in AI_MODELS
-        ):
-            return JsonResponse({"error": "Model Not Found for Provider"}, status=400)
+            if not any(
+                key == model_name and i["litellm_provider"] == provider_obj.provider
+                for key, i in model_cost.items()
+            ):
+                return None, JsonResponse(
+                    {"error": "Model Not Found for Provider"}, status=400
+                )
 
-        # Initialize and load model
-        llm = chat_completion(
-            api_key=decrypt_value(provider_obj.api_key),
-            model_name=model_name,
-            provider=provider_obj.provider,
-        )
-
-        # Define a generator for the StreamingHttpResponse
-        async def stream_chat():
-            try:
-                async for response in llm.chat(messages):
-                    yield f"data: {response}\n\n"
-            except Exception as e:
-                yield f"data: Error in chat completion: {str(e)}\n\n"
-
-        return StreamingHttpResponse(stream_chat(), content_type="text/event-stream")
+            return (messages, model_name, provider_obj), None
+        except json.JSONDecodeError:
+            return None, JsonResponse({"error": "Invalid JSON body"}, status=400)
 
 
-class GenerateCompletionView(BaseGenerateCompletionView):
+class PlaygroundGenerateCompletionView(BaseGenerateCompletionView):
     permission_classes = [IsAuthenticated]
+
+    def post(self, request) -> StreamingHttpResponse:
+        validation_result, error_response = self.validate_request(request)
+        if error_response:
+            return error_response
+
+        messages, model_name, provider_obj = validation_result
+        return self.generate_stream_response(messages, model_name, provider_obj)
 
 
 class APIKeyAuthenticatedGenerateCompletionView(BaseGenerateCompletionView):
     permission_classes = [APIKeyPermission]
 
+    def post(self, request):
+        validation_result, error_response = self.validate_request(request)
+        if error_response:
+            return error_response
+
+        messages, model_name, provider_obj = validation_result
+        return self.generate_sync_response(messages, model_name, provider_obj)
+
 
 class ProviderAPIKeyListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(cache_page(60))  # Cache for 1 minute
+    @method_decorator(
+        cache_page(3600)
+    )  # Cache for 1 hour since model list rarely changes
     def get(self, request):
         """List all provider API keys for the authenticated user"""
         cache_key = f"provider_keys_{request.user.id}"
@@ -97,7 +134,7 @@ class ProviderAPIKeyListCreateView(APIView):
             "user"
         )
         serializer = ProviderAPIKeySerializer(providers, many=True)
-        cache.set(cache_key, serializer.data, timeout=60)
+        cache.set(cache_key, serializer.data, timeout=3600)
         return Response(serializer.data)
 
     @transaction.atomic
@@ -198,8 +235,6 @@ class ProviderAPIKeyDetailView(APIView):
 
 
 class AIModelListView(APIView):
-    permission_classes = [IsAuthenticated]
-
     @method_decorator(
         cache_page(3600)
     )  # Cache for 1 hour since model list rarely changes
@@ -210,50 +245,59 @@ class AIModelListView(APIView):
         Query Parameters:
         - name: Filter models by name (case-insensitive partial match)
         - provider: Filter models by provider (case-insensitive exact match)
+        - limit: Number of results to return (default: all)
+        - offset: Number of results to skip (default: 0)
         """
         # Get query parameters
         name_filter = request.query_params.get("name", "").lower()
         provider_filter = request.query_params.get("provider", "").lower()
+        limit = request.query_params.get("limit")
+        offset = int(request.query_params.get("offset", 0))
 
         # Generate cache key based on filters
-        cache_key = f"ai_models_list_{name_filter}_{provider_filter}"
+        cache_key = f"ai_models_list_{name_filter}_{provider_filter}_{limit}_{offset}"
         cached_data = cache.get(cache_key)
 
         if cached_data:
             return Response(cached_data)
 
         # Filter models based on query parameters
-        filtered_models = AI_MODELS
+        filtered_models = []
+        for name, model in model_cost.items():
+            if name != "sample_spec":
+                filtered_models.append({**model, "model_name": name})
 
         if name_filter:
             filtered_models = [
-                model
-                for model in filtered_models
-                if name_filter in model["model_name"].lower()
+                model for model in filtered_models if name_filter in model["model_name"]
             ]
 
         if provider_filter:
             filtered_models = [
                 model
                 for model in filtered_models
-                if provider_filter == model["provider"].value.lower()
+                if provider_filter == model["litellm_provider"]
             ]
 
-        # Transform the data to include additional useful information
-        filtered_models = [
-            {
-                **model,
-                "provider": model["provider"].value,
-            }  # Convert enum to string value
-            for model in filtered_models
-        ]
+        # Apply pagination
+        total_count = len(filtered_models)
+        if limit:
+            limit = int(limit)
+            filtered_models = filtered_models[offset : offset + limit]
 
         response_data = {
-            "count": len(filtered_models),
+            "count": total_count,
             "models": filtered_models,
             "available_providers": sorted(
-                list({model["provider"].value for model in AI_MODELS})
+                list(
+                    {
+                        model["litellm_provider"]
+                        for model in list(model_cost.values())[1:]
+                    }
+                )
             ),
+            "offset": offset,
+            "limit": limit if limit else None,
         }
 
         # Cache the filtered results

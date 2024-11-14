@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    GenerateCompletionView,
+    PlaygroundGenerateCompletionView,
     APIKeyAuthenticatedGenerateCompletionView,
     ProviderAPIKeyListCreateView,
     ProviderAPIKeyDetailView,
@@ -13,7 +13,7 @@ urlpatterns = [
     # AI Completion endpoints
     path(
         "playground/generate/completion/",
-        GenerateCompletionView.as_view(),
+        PlaygroundGenerateCompletionView.as_view(),
         name="generate-completion",
     ),
     path(
