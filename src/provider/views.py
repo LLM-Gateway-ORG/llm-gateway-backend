@@ -44,8 +44,7 @@ class BaseGenerateCompletionView(APIView):
                 yield f"data: Error in chat completion: {str(e)}\n\n"
 
         return StreamingHttpResponse(
-            streaming_content=stream_chat(),
-            content_type="text/event-stream"
+            streaming_content=stream_chat(), content_type="text/event-stream"
         )
 
     def generate_sync_response(self, messages, model_name, provider_obj):
@@ -265,7 +264,9 @@ class AIModelListView(APIView):
         filtered_models = []
         for name, model in model_cost.items():
             if name != "sample_spec":
-                filtered_models.append({**model, "model_name": name})
+                filtered_models.append(
+                    {**model, "provider": model["litellm_provider"], "model_name": name}
+                )
 
         if name_filter:
             filtered_models = [
@@ -276,7 +277,7 @@ class AIModelListView(APIView):
             filtered_models = [
                 model
                 for model in filtered_models
-                if provider_filter == model["litellm_provider"]
+                if provider_filter == model["provider"]
             ]
 
         # Apply pagination
