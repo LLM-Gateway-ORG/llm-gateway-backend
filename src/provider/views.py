@@ -118,9 +118,9 @@ class APIKeyAuthenticatedGenerateCompletionView(BaseGenerateCompletionView):
 class ProviderAPIKeyListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(
-        cache_page(3600)
-    )  # Cache for 1 hour since model list rarely changes
+    # @method_decorator(
+    #     cache_page(3600)
+    # )  # Cache for 1 hour since model list rarely changes
     def get(self, request):
         """List all provider API keys for the authenticated user"""
         cache_key = f"provider_keys_{request.user.id}"
