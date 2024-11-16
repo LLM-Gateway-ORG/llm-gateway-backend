@@ -234,9 +234,11 @@ class ProviderAPIKeyDetailView(APIView):
 
 
 class AIModelListView(APIView):
-    @method_decorator(
-        cache_page(3600)
-    )  # Cache for 1 hour since model list rarely changes
+    permission_classes = [IsAuthenticated]
+
+    # @method_decorator(
+    #     cache_page(60)
+    # )  # Cache for 1 min since model list rarely changes
     def get(self, request):
         """
         List all available AI models with optional filtering by name and provider.
@@ -254,18 +256,31 @@ class AIModelListView(APIView):
         offset = int(request.query_params.get("offset", 0))
 
         # Generate cache key based on filters
-        cache_key = f"ai_models_list_{name_filter}_{provider_filter}_{limit}_{offset}"
+        cache_key = f"ai_models_list_{request.user.id}_{name_filter}_{provider_filter}_{limit}_{offset}"
         cached_data = cache.get(cache_key)
 
         if cached_data:
             return Response(cached_data)
+
+        # Fetch Active Providers
+        active_providers_list = (
+            ProviderAPIKey.objects.filter(user=request.user)
+            .values_list("provider", flat=True)
+            .distinct()
+        )
 
         # Filter models based on query parameters
         filtered_models = []
         for name, model in model_cost.items():
             if name != "sample_spec":
                 filtered_models.append(
-                    {**model, "provider": model["litellm_provider"], "model_name": name}
+                    {
+                        **model,
+                        "provider": model["litellm_provider"],
+                        "model_name": name,
+                        "active": model["litellm_provider"]
+                        in active_providers_list,  # check if api keys are added for the provider by the user
+                    }
                 )
 
         if name_filter:
