@@ -5,11 +5,14 @@ from django.contrib.auth.models import (
 )
 from django.db import models
 from django.core.validators import RegexValidator
-from base.models import BaseModel
 import uuid
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 import secrets
+from django.conf import settings
+
+from base.models import BaseModel
+from main.email import send_email
 
 
 class CustomUserManager(BaseUserManager):
@@ -113,3 +116,39 @@ def create_api_key(sender, instance, created, **kwargs):
         # Generate a secure random API key
         api_key = secrets.token_urlsafe(32)
         APIKey.objects.create(name="Default", user=instance, key=api_key)
+
+
+class Newsletter(BaseModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True)
+
+    def __str__(self) -> str:
+        return self.email
+
+
+@receiver(post_save, sender=Newsletter)
+def send_thank_you_email(sender, instance, created, **kwargs):
+    if created:
+        # Only send the email when a new instance is created
+        subject = "🎉 Thank You for Subscribing to LLM Gateway! 🎉"
+        text_content = (
+            "Hi there,\n\n"
+            "Thank you for subscribing to our newsletter. Stay tuned for exciting updates and insights!\n\n"
+            "Best regards,\nThe LLM Gateway Team"
+        )
+        html_template = "emails/newsletter_thank_you.html"
+        context = {
+            "support_mail": "support@llmgateway.com",
+            "email": instance.email,
+            "year": "2024",
+            "website_link": settings.PLATFORM_URL,
+        }
+
+        # Use the reusable send_mail function
+        send_email(
+            recipients=[instance.email],
+            subject=subject,
+            plain_text_message=text_content,
+            html_template=html_template,
+            context=context,
+        )

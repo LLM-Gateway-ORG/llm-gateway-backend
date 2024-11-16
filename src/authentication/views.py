@@ -14,7 +14,7 @@ from django.db import transaction
 from google.oauth2 import id_token
 from urllib.parse import urlencode
 
-from .models import AuthUser, APIKey
+from .models import AuthUser, APIKey, Newsletter
 from .serializers import AuthUserSerializer, APIKeySerializer, ResetPasswordSerializer
 
 
@@ -128,9 +128,7 @@ class APIKeyView(generics.ListCreateAPIView):
 
         # Generate a new API key for the authenticated user
         api_key_value = secrets.token_urlsafe(32)
-        api_key = APIKey.objects.create(
-            name=name, key=api_key_value, user=request.user
-        )
+        api_key = APIKey.objects.create(name=name, key=api_key_value, user=request.user)
         serializer = APIKeySerializer(api_key)
         return Response(
             {**serializer.data, "key": api_key.key}, status=status.HTTP_201_CREATED
@@ -331,3 +329,23 @@ class ResetPasswordView(views.APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class NewsletterAPIView(views.APIView):
+    def post(self, request) -> Response:
+        email = request.data.get("email")
+        if not email:
+            return Response(
+                {"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if email already exists, otherwise create it
+        obj, created = Newsletter.objects.get_or_create(email=email)
+
+        if created:
+            # Send thank-you email
+            message = "Thanks for subscribing to our newsletter!"
+        else:
+            message = "You are already subscribed to the newsletter."
+
+        return Response({"message": message}, status=status.HTTP_200_OK)

@@ -10,6 +10,7 @@ from .views import (
     GoogleCallbackView,
     GoogleTokenRefreshView,
     ResetPasswordView,
+    NewsletterAPIView,
 )
 
 urlpatterns = [
@@ -31,4 +32,5 @@ urlpatterns = [
         APIKeyRetrieveDeleteView.as_view(),
         name="apikey_detail",
     ),
+    path("newsletter/", NewsletterAPIView.as_view(), name="subscribe_newsletter"),
 ]
