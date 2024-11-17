@@ -28,6 +28,8 @@ RUN poetry install --no-dev --no-interaction --no-ansi
 
 # copy entrypoint.sh
 COPY ./src/entrypoint.sh /usr/src/main/entrypoint.sh
+# Ensure entrypoint.sh is executable
+RUN chmod +x /usr/src/main/entrypoint.sh
 
 # copy project
 COPY ./src/ /usr/src/main/

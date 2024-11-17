@@ -2,9 +2,9 @@ name: Docker Build and Push
 
 on:
   push:
-    branches: [ "main", "development" ]
+    branches: ["main", "development"]
   pull_request:
-    branches: [ "main", "development" ]
+    branches: ["main", "development"]
   workflow_dispatch:
 
 env:
@@ -33,31 +33,30 @@ jobs:
 
       - name: Generate timestamp
         id: timestamp
-        run: echo "timestamp=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+        run: echo "timestamp=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
       - name: Set Dockerfile and tags based on branch
         id: docker-config
         run: |
-          if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
-            echo "dockerfile=Dockerfile" >> $GITHUB_OUTPUT
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.timestamp.outputs.timestamp }}" >> $GITHUB_OUTPUT
+          if [[ $GITHUB_REF == "refs/heads/main" ]]; then
+            echo "dockerfile=Dockerfile" >> $GITHUB_ENV
+            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$GITHUB_ENV_TIMESTAMP" >> $GITHUB_ENV
           else
-            echo "dockerfile=Dockerfile" >> $GITHUB_OUTPUT
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ steps.timestamp.outputs.timestamp }}" >> $GITHUB_OUTPUT
-          fi
+            echo "dockerfile=Dockerfile" >> $GITHUB_ENV
+            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-$GITHUB_ENV_TIMESTAMP" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ steps.docker-config.outputs.dockerfile }}
+          file: ${{ env.dockerfile }}
           push: true
-          tags: ${{ steps.docker-config.outputs.tags }}
+          tags: ${{ env.tags }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
       - name: Print image details
         run: |
           echo "Built and pushed images:"
-          echo "Dockerfile: ${{ steps.docker-config.outputs.dockerfile }}"
-          echo "Tags: ${{ steps.docker-config.outputs.tags }}"
+          echo "Dockerfile: ${{ env.dockerfile }}"
+          echo "Tags: ${{ env.tags }}"
