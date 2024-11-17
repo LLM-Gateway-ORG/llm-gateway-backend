@@ -3,7 +3,7 @@ from django.utils.text import slugify
 import uuid
 
 from base.models import BaseModel
-from provider.chat.enum import ProviderEnum
+from provider.generate.enum import ProviderEnum
 from authentication.models import AuthUser
 from provider.helpers import encrypt_value, decrypt_value
 

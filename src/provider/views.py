@@ -9,11 +9,10 @@ from django.views.decorators.cache import cache_page
 from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
-from litellm import model_cost
 
 from authentication.permissions import APIKeyPermission
 from provider.models import ProviderAPIKey
-from provider.utils import chat_completion
+from provider.utils import chat_completion, get_model_list
 from provider.serializers import (
     ProviderAPIKeySerializer,
     ProviderAPIKeyCreateSerializer,
@@ -29,14 +28,16 @@ class BaseGenerateCompletionView(APIView):
         """Override this method in subclasses to set specific permissions."""
         raise NotImplementedError("Subclasses must define permission classes")
 
-    def generate_stream_response(self, messages, model_name, provider_obj):
+    def generate_stream_response(
+        self, messages: list, model_name: str, provider: str, api_key: str
+    ):
         """Generate streaming response for async endpoints"""
 
         async def stream_chat():
             try:
                 llm = chat_completion(
-                    api_key=decrypt_value(provider_obj.api_key),
-                    provider=provider_obj.provider,
+                    api_key=api_key,
+                    provider=provider,
                 )
                 async for response in llm.async_completion(model_name, messages):
                     yield f"data: {response}\n\n"
@@ -47,12 +48,14 @@ class BaseGenerateCompletionView(APIView):
             streaming_content=stream_chat(), content_type="text/event-stream"
         )
 
-    def generate_sync_response(self, messages, model_name, provider_obj):
+    def generate_sync_response(
+        self, messages: list, model_name: str, provider: str, api_key: str
+    ):
         """Generate complete response for non-streaming endpoints"""
         try:
             llm = chat_completion(
-                api_key=decrypt_value(provider_obj.api_key),
-                provider=provider_obj.provider,
+                api_key=api_key,
+                provider=provider,
             )
 
             full_response = llm.completion(model_name, messages)
@@ -66,27 +69,38 @@ class BaseGenerateCompletionView(APIView):
             body = request.data
             messages = body.get("messages", [])
             model_name = body.get("model_name")
-            provider_id = body.get("provider_id")
+            api_key = body.get("api_key", None)
 
-            provider_list = ProviderAPIKey.objects.filter(
-                id=provider_id, user=request.user
+            available_provider_list = set(
+                ProviderAPIKey.objects.filter(user=request.user)
+                .values_list("provider", flat=True)
+                .distinct()
             )
-            if not provider_list.exists():
-                return None, JsonResponse(
-                    {"error": "Provider Not Found or Access Denied"}, status=400
-                )
 
-            provider_obj = provider_list.first()
+            ai_models_list = get_model_list()
 
-            if not any(
-                key == model_name and i["litellm_provider"] == provider_obj.provider
-                for key, i in model_cost.items()
+            if model_name not in ai_models_list or (
+                not api_key
+                and ai_models_list[model_name]["provider"]
+                not in available_provider_list
             ):
                 return None, JsonResponse(
                     {"error": "Model Not Found for Provider"}, status=400
                 )
 
-            return (messages, model_name, provider_obj), None
+            # API Key
+            if not api_key:
+                api_key = ProviderAPIKey.objects.get(
+                    provider=ai_models_list[model_name]
+                ).api_key
+                api_key = decrypt_value(api_key)
+
+            return (
+                messages,
+                model_name,
+                ai_models_list[model_name]["provider"],
+                api_key,
+            ), None
         except json.JSONDecodeError:
             return None, JsonResponse({"error": "Invalid JSON body"}, status=400)
 
@@ -99,8 +113,8 @@ class PlaygroundGenerateCompletionView(BaseGenerateCompletionView):
         if error_response:
             return error_response
 
-        messages, model_name, provider_obj = validation_result
-        return self.generate_stream_response(messages, model_name, provider_obj)
+        messages, model_name, provider, api_key = validation_result
+        return self.generate_stream_response(messages, model_name, provider, api_key)
 
 
 class APIKeyAuthenticatedGenerateCompletionView(BaseGenerateCompletionView):
@@ -111,8 +125,8 @@ class APIKeyAuthenticatedGenerateCompletionView(BaseGenerateCompletionView):
         if error_response:
             return error_response
 
-        messages, model_name, provider_obj = validation_result
-        return self.generate_sync_response(messages, model_name, provider_obj)
+        messages, model_name, provider, api_key = validation_result
+        return self.generate_sync_response(messages, model_name, provider, api_key)
 
 
 class ProviderAPIKeyListCreateView(APIView):
@@ -270,15 +284,15 @@ class AIModelListView(APIView):
         )
 
         # Filter models based on query parameters
+        ai_models_list = get_model_list()
         filtered_models = []
-        for name, model in model_cost.items():
+        for name, model in ai_models_list.items():
             if name != "sample_spec":
                 filtered_models.append(
                     {
                         **model,
-                        "provider": model["litellm_provider"],
                         "model_name": name,
-                        "active": model["litellm_provider"]
+                        "active": model["provider"]
                         in active_providers_list,  # check if api keys are added for the provider by the user
                     }
                 )
@@ -305,12 +319,7 @@ class AIModelListView(APIView):
             "count": total_count,
             "models": filtered_models,
             "available_providers": sorted(
-                list(
-                    {
-                        model["litellm_provider"]
-                        for model in list(model_cost.values())[1:]
-                    }
-                )
+                list({model["provider"] for model in list(ai_models_list.values())[1:]})
             ),
             "offset": offset,
             "limit": limit if limit else None,

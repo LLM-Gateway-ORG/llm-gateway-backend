@@ -2,35 +2,53 @@ import json
 import requests
 import os
 
+
+def read_json_file(filepath: str) -> dict:
+    with open(filepath, "r") as f:
+        return json.load(f)
+
+
+def write_json_file(filepath: str, data: dict) -> None:
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+
+
 if __name__ == "__main__":
     try:
+        BASE_FILE_PATH = r"src\provider\generate\data"
         # Fetching the model data
         url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
         response = requests.get(url)
         response.raise_for_status()
-        llmlite_models_list = response.json()
+        litellm_models_list = response.json()
 
         # Filtering models except 'sample_spec'
-        litellm_models = { key: value for key, value in llmlite_models_list.items() if key != "sample_spec"}
+        litellm_models_dict = dict()
+        for key, value in litellm_models_list.items():
+            if key != "sample_spec":
+                litellm_models_dict[key] = {
+                    **value,
+                    "provider": value["litellm_provider"],
+                }
 
-        # Check if `ai_models_list.json` exists
-        if os.path.exists("ai_models_list.json"):
-            with open("ai_models_list.json", "r") as f:
-                existing_data = json.load(f)
-        else:
-            existing_data = {"litellm_models": [], "other_models": []}
+        # Check if `models_list.json` exists
+        other_models_path = os.path.join(BASE_FILE_PATH, "other_models_list.json")
+        other_models_dict = {}
+        if os.path.exists(other_models_path):
+            with open(other_models_path, "r") as f:
+                other_models_dict = json.load(f)
 
         # Update the `litellm_models` and retain `other_models`
-        updated_data = {
-            "litellm_models": litellm_models,
-            "other_models": existing_data.get("other_models", []),
-        }
+        updated_data = litellm_models_dict | other_models_dict
 
         # Writing the updated data back to the JSON file
-        with open("ai_models_list.json", "w") as f:
-            json.dump(updated_data, f, indent=4)
+        write_json_file(
+            os.path.join(BASE_FILE_PATH, "litellm_models_list.json"),
+            litellm_models_dict,
+        )
+        write_json_file(os.path.join(BASE_FILE_PATH, "models_list.json"), updated_data)
 
-        print("ai_models_list.json updated successfully.")
+        print("models_list.json updated successfully.")
 
     except requests.RequestException as e:
         print(f"Error fetching models list: {e}")

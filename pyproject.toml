@@ -19,6 +19,7 @@ langchain-core = "^0.3.13"
 google-auth = "^2.35.0"
 django-cors-headers = "^4.6.0"
 litellm = "^1.52.6"
+krutrim-cloud = "^0.6.1"
 
 
 [build-system]

@@ -25,6 +25,7 @@ class ProviderEnum(BaseEnum):
     MISTRAL = "mistral"
     NLP_CLOUD = "nlp_cloud"
     OLLAMA = "ollama"
+    OLA_KRUTRIM = "ola_krutrim"
     OPENAI = "openai"
     OPENROUTER = "openrouter"
     PALM = "palm"
