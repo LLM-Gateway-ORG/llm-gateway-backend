@@ -71,27 +71,30 @@ class BaseGenerateCompletionView(APIView):
             model_name = body.get("model_name")
             api_key = body.get("api_key", None)
 
-            available_provider_list = set(
-                ProviderAPIKey.objects.filter(user=request.user)
-                .values_list("provider", flat=True)
-                .distinct()
-            )
-
+            # Check AI models list
             ai_models_list = get_model_list()
-
-            if model_name not in ai_models_list or (
-                not api_key
-                and ai_models_list[model_name]["provider"]
-                not in available_provider_list
-            ):
+            if model_name not in ai_models_list:
                 return None, JsonResponse(
-                    {"error": "Model Not Found for Provider"}, status=400
+                    {"error": "The specified model does not exist."}
                 )
 
-            # API Key
+            # Check API Key
             if not api_key:
+                available_providers = set(
+                    ProviderAPIKey.objects.filter(user=request.user)
+                    .values_list("provider", flat=True)
+                    .distinct()
+                )
+                if ai_models_list[model_name]["provider"] not in available_providers:
+                    return None, JsonResponse(
+                        {
+                            "error": "Please provide an API key in the request body or register an API key for the specified provider."
+                        },
+                        status=400,
+                    )
+
                 api_key = ProviderAPIKey.objects.get(
-                    provider=ai_models_list[model_name]
+                    provider=ai_models_list[model_name]["provider"]
                 ).api_key
                 api_key = decrypt_value(api_key)
 
@@ -102,7 +105,9 @@ class BaseGenerateCompletionView(APIView):
                 api_key,
             ), None
         except json.JSONDecodeError:
-            return None, JsonResponse({"error": "Invalid JSON body"}, status=400)
+            return None, JsonResponse(
+                {"error": "The request body must be valid JSON."}, status=400
+            )
 
 
 class PlaygroundGenerateCompletionView(BaseGenerateCompletionView):

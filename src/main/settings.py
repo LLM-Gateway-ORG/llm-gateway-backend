@@ -187,7 +187,7 @@ cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins if origin]
 
-# FORCE_SCRIPT_NAME = "/api"
+FORCE_SCRIPT_NAME = "/api"
 
 # Send Mail
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

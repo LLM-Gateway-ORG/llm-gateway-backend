@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED 1
 
 # install system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc g++ libpq-dev curl ncat && \
+    apt-get install -y --no-install-recommends gcc g++ libpq-dev curl ncat ffmpeg libgl1 libglib2.0-0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
