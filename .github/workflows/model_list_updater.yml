@@ -38,7 +38,7 @@ jobs:
         run: |
           git config --local user.name "GitHub Actions"
           git config --local user.email "actions@github.com"
-          git add src/provider/generate/models_list.json src/provider/generate/litellm_models_list.json
+          git add src/provider/generate/data/models_list.json src/provider/generate/data/litellm_models_list.json
           if git diff-index --quiet HEAD; then
             echo "No changes to commit."
           else
