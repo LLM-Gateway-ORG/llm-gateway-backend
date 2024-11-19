@@ -38,8 +38,8 @@ jobs:
       run: |
         git config --local user.name "GitHub Actions"
         git config --local user.email "actions@github.com"
-        git add ai_models_list.json
-        git commit -m "Update ai_models_list.json [Automated]"
+        git add src\provider\generate\models_list.json src\provider\generate\litellm_models_list.json
+        git commit -m "Update models list files [Automated]"
         git push origin main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
