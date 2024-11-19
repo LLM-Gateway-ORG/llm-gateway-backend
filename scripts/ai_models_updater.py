@@ -15,7 +15,7 @@ def write_json_file(filepath: str, data: dict) -> None:
 
 if __name__ == "__main__":
     try:
-        BASE_FILE_PATH = r"src\provider\generate\data"
+        BASE_FILE_PATH = os.path.join("src", "provider", "generate", "data")
         # Fetching the model data
         url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
         response = requests.get(url)
