@@ -27,11 +27,11 @@ COPY pyproject.toml poetry.lock* /usr/src/main/
 RUN poetry install --no-dev --no-interaction --no-ansi
 
 # copy entrypoint.sh
-RUN ls -a
 COPY --chown=1000:1000 --chmod=755 ./src/entrypoint.sh /usr/src/main/entrypoint.sh
 
 # copy project
 COPY ./src/ /usr/src/main/
+RUN ls -a
 
 # run entrypoint.sh
 CMD /usr/src/main/entrypoint.sh
