@@ -1,37 +1,54 @@
-# pull official base image
-FROM python:3.12-slim
+# Stage 1: Build environment
+FROM python:3.12-slim AS builder
 
-# set work directory
+# Set work directory
 WORKDIR /usr/src/main
 
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1 \
+    PYTHONUNBUFFERED 1
 
-# install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc g++ libpq-dev curl ncat ffmpeg libgl1 libglib2.0-0 && \
+# Install system dependencies required for building dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ libpq-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# install python dependencies
-RUN pip install --upgrade pip \
-    && pip install ruamel.yaml.clib psycopg2-binary
-
 # Install Poetry
-RUN pip install poetry
-RUN poetry config virtualenvs.create false
+RUN pip install --no-cache-dir --upgrade pip poetry && \
+    poetry config virtualenvs.create false
 
-# install project dependencies
+# Copy only dependency files
 COPY pyproject.toml poetry.lock* /usr/src/main/
-RUN poetry install --no-dev --no-interaction --no-ansi
 
-# copy entrypoint.sh
+# Install project dependencies
+RUN poetry install --no-dev --no-interaction --no-ansi --no-cache
+
+# Stage 2: Runtime environment
+FROM python:3.12-slim
+
+# Set work directory
+WORKDIR /usr/src/main
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1 \
+    PYTHONUNBUFFERED 1
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 curl ncat ffmpeg libgl1 libglib2.0-0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy installed dependencies from the builder stage
+COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy project files
+COPY ./src/ /usr/src/main/
+
+# Copy entrypoint script and set permissions
 COPY --chown=1000:1000 --chmod=755 ./src/entrypoint.sh /usr/src/main/entrypoint.sh
 
-# copy project
-COPY ./src/ /usr/src/main/
-RUN ls -a
-
-# run entrypoint.sh
-CMD /usr/src/main/entrypoint.sh
+# Final command
+CMD ["/usr/src/main/entrypoint.sh"]

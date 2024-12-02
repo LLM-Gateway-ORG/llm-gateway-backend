@@ -35,7 +35,7 @@ ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
-LOCAL_APPS = ["provider", "authentication"]
+LOCAL_APPS = ["provider", "authentication", "ai_apps"]
 
 SYSTEM_APPS = [
     "django.contrib.admin",
@@ -72,7 +72,7 @@ ROOT_URLCONF = "main.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        'DIRS': [BASE_DIR / 'templates'],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -187,7 +187,7 @@ cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins if origin]
 
-FORCE_SCRIPT_NAME = "/api"
+# FORCE_SCRIPT_NAME = "/api"
 
 # Send Mail
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

@@ -1,5 +1,5 @@
 from .base import BaseLLM
-from krutrim_cloud import KrutrimCloud
+# from krutrim_cloud import KrutrimCloud
 
 
 class OlaKrutrim(BaseLLM):
@@ -14,7 +14,7 @@ class OlaKrutrim(BaseLLM):
     @api_key.setter
     def api_key(self, api_key: str) -> None:
         self._api_key = api_key
-        self.client = KrutrimCloud(api_key=api_key)
+        # self.client = KrutrimCloud(api_key=api_key)
 
     def completion(self, model_name: str, messages: list) -> dict:
         if not self.client:
