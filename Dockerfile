@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --upgrade pip poetry && \
 COPY pyproject.toml poetry.lock* /usr/src/main/
 
 # Install project dependencies
-RUN poetry install --no-dev --no-interaction --no-ansi --no-cache
+RUN poetry install --only main --no-interaction --no-ansi --no-cache
 
 # Stage 2: Runtime environment
 FROM python:3.12-slim
@@ -34,7 +34,7 @@ WORKDIR /usr/src/main
 ENV PYTHONDONTWRITEBYTECODE 1 \
     PYTHONUNBUFFERED 1
 
-# Install runtime dependencies
+# install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 curl ncat ffmpeg libgl1 libglib2.0-0 && \
     apt-get clean && \
@@ -44,11 +44,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy project files
+# copy entrypoint.sh
+COPY ./src/entrypoint.sh /usr/src/main/entrypoint.sh
+RUN ["chmod", "+x", "/usr/src/main/entrypoint.sh"]
+
+# copy project
 COPY ./src/ /usr/src/main/
 
-# Copy entrypoint script and set permissions
-COPY --chown=1000:1000 --chmod=755 ./src/entrypoint.sh /usr/src/main/entrypoint.sh
-
-# Final command
-CMD ["/usr/src/main/entrypoint.sh"]
+# run entrypoint.sh
+# ENTRYPOINT ["sh", "/usr/src/main/entrypoint.sh"]
