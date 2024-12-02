@@ -14,9 +14,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # permissions:
-    #   contents: read
-    #   packages: write
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -53,7 +53,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # file: ${{ steps.docker-config.outputs.dockerfile }}
+          file: ${{ steps.docker-config.outputs.dockerfile }}
           push: true
           tags: ${{ steps.docker-config.outputs.tags }}
           # cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
