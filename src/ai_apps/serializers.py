@@ -1,5 +1,11 @@
+import json
 from rest_framework import serializers
+from pydantic import ValidationError
 from .models import Apps, AppUsers
+from .data_models import SdkConfiguration, WebUiConfiguration
+from .enum import FeatureTypeEnum
+
+from provider.utils import get_model_list
 
 
 class AppSerializer(serializers.ModelSerializer):
@@ -35,18 +41,45 @@ class AppSerializer(serializers.ModelSerializer):
         """
         Validate that the provided supported models are allowed.
         """
-        allowed_models = [
-            "GPT-3.5",
-            "GPT-4",
-            "CustomModel",
-        ]  # Define allowed model names
+        allowed_models = get_model_list()
         invalid_models = [model for model in value if model not in allowed_models]
 
-        if invalid_models:
+        if len(invalid_models):
             raise serializers.ValidationError(
                 f"Unsupported models: {', '.join(invalid_models)}. "
-                f"Allowed models are: {', '.join(allowed_models)}."
             )
+        return value
+
+    def validate_config(self, value):
+        """
+        Validate configuration for WebUI or SDK
+        """
+        config_classes = {
+            FeatureTypeEnum.WebUI.value: WebUiConfiguration,
+            FeatureTypeEnum.SDK.value: SdkConfiguration,
+        }
+
+        feature_type = self.instance.feature_type
+        if feature_type in config_classes:
+            try:
+                return json.loads(config_classes[feature_type](**value).json())
+            except ValidationError as e:
+                raise serializers.ValidationError(json.loads(e.json()))
+
+        raise serializers.ValidationError(
+            {"feature_type_error": "Invalid Feature Type"}
+        )
+
+    def validate_feature_type(self, value):
+        if value not in FeatureTypeEnum:
+            raise serializers.ValidationError("Invalid Feature Type")
+        
+        # Check if this is an update
+        if self.instance:
+            # Prevent changes to feature_type during updates
+            if value != self.instance.feature_type:
+                raise serializers.ValidationError("Feature Type cannot be updated.")
+        
         return value
 
 

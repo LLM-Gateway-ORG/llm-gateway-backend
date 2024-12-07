@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .models import Apps
 from .serializers import AppSerializer
+from provider.utils import get_model_list
 
 
 class AppsViewSet(viewsets.ModelViewSet):
@@ -12,6 +13,7 @@ class AppsViewSet(viewsets.ModelViewSet):
 
     serializer_class = AppSerializer
     permission_classes = [IsAuthenticated]
+    ai_models = get_model_list()
 
     def get_queryset(self):
         """
@@ -39,21 +41,6 @@ class AppsViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        supported_models = request.data.get("supported_models", [])
-        # Optional validation for allowed models
-        allowed_models = ["GPT-3.5", "GPT-4", "CustomModel"]
-        invalid_models = [
-            model for model in supported_models if model not in allowed_models
-        ]
-        if invalid_models:
-            return Response(
-                {
-                    "detail": f"Unsupported models: {', '.join(invalid_models)}. "
-                    f"Allowed models are: {', '.join(allowed_models)}."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -67,7 +54,6 @@ class AppsViewSet(viewsets.ModelViewSet):
         """
         Custom update method to restrict updates to owned Apps.
         """
-        partial = kwargs.pop("partial", False)
         instance = self.get_object()
 
         if instance.user != request.user:
@@ -77,7 +63,7 @@ class AppsViewSet(viewsets.ModelViewSet):
             )
 
         supported_models = request.data.get("supported_models", [])
-        allowed_models = ["GPT-3.5", "GPT-4", "CustomModel"]
+        allowed_models = self.ai_models
         invalid_models = [
             model for model in supported_models if model not in allowed_models
         ]
@@ -90,7 +76,7 @@ class AppsViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 

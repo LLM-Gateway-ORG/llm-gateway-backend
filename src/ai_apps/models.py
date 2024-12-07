@@ -28,15 +28,15 @@ class Apps(BaseModel):
     )
     feature_type: str = models.CharField(
         max_length=50,
-        choices=(
-            ("webui", "Web UI"),
-            ("sdk", "SDK"),
-        ),
         help_text="Type of the feature configuration",
     )
     config: Dict[str, Any] = models.JSONField(
         default=dict,
         help_text="JSON configuration for the feature (e.g., theme, API limits)",
+    )
+    instruction: str = models.TextField(
+        blank=True,
+        help_text="Instructions for using the app, optional",
     )
 
     supported_models = ArrayField(
@@ -46,9 +46,13 @@ class Apps(BaseModel):
         help_text="List of supported models (e.g., ['GPT-3.5', 'GPT-4'])",
     )
 
+    class Meta:
+        verbose_name = "App"
+        verbose_name_plural = "Apps"
+        ordering = ["name"]
 
     def __str__(self):
-        return self.name
+        return self.name if self.name else f"App {self.id}"
 
 
 class AppUsers(BaseModel):
