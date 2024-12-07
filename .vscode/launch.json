@@ -30,8 +30,8 @@
             },
             "program": "${workspaceFolder}/src/manage.py",
             "args": [
-                // "makemigrations",
-                "migrate",
+                "makemigrations"
+                // "migrate",
                 // "createsuperuser",
             ],
             "django": true,

@@ -27,12 +27,12 @@ RUN poetry install --only main --no-interaction --no-ansi --no-cache
 # Stage 2: Runtime environment
 FROM python:3.12-slim
 
-# set work directory
+# Set work directory
 WORKDIR /usr/src/main
 
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1 \
+    PYTHONUNBUFFERED 1
 
 # install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -28,6 +28,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('auth/', include('authentication.urls')),
     path('provider/', include('provider.urls')),
+    path('ai_apps/', include('ai_apps.urls')),
     path('healthz/', healthz_view),
 ]
 
